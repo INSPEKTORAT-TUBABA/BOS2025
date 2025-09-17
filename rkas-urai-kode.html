@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Analisis Dokumen</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .result-box { border: 1px solid #ccc; padding: 15px; margin-top: 20px; border-radius: 5px; }
+        .warning { color: red; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Unggah Dokumen RKAS untuk Analisis</h2>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" name="file" accept="image/*, .pdf">
+        <button type="submit">Analisis Dokumen</button>
+    </form>
+
+    <div id="loading" style="display:none;">Memproses dokumen...</div>
+
+    <div id="results" class="result-box" style="display:none;">
+        <h3>Hasil Analisis</h3>
+        <ul id="warnings"></ul>
+        <div id="items-table-container"></div>
+        <p><strong>Total Jumlah:</strong> <span id="total-amount"></span></p>
+    </div>
+</div>
+
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert('Silakan pilih file.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    try {
+        const response = await fetch('/analyze', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Analisis gagal. Server error.');
+        }
+
+        const data = await response.json();
+        
+        document.getElementById('warnings').innerHTML = '';
+        data.warnings.forEach(warn => {
+            const li = document.createElement('li');
+            li.textContent = warn;
+            li.classList.add('warning');
+            document.getElementById('warnings').appendChild(li);
+        });
+
+        const tableContainer = document.getElementById('items-table-container');
+        tableContainer.innerHTML = '';
+        if (data.items.length > 0) {
+            const table = document.createElement('table');
+            let tableHTML = '<thead><tr><th>Item</th><th>Jumlah</th></tr></thead><tbody>';
+            data.items.forEach(item => {
+                tableHTML += `<tr><td>${item.name}</td><td>Rp ${item.amount.toLocaleString('id-ID')}</td></tr>`;
+            });
+            tableHTML += '</tbody>';
+            table.innerHTML = tableHTML;
+            tableContainer.appendChild(table);
+        }
+
+        document.getElementById('total-amount').textContent = `Rp ${data.total_amount.toLocaleString('id-ID')}`;
+        document.getElementById('results').style.display = 'block';
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+});
+</script>
+
+</body>
+</html>
